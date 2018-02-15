@@ -735,6 +735,7 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
             RCTResponseSenderBlock callback = [readCallbacks objectForKey:key];
             callback(@[errorStr]);
             [readCallbacks removeObjectForKey:key];
+            break;
         }
     }
 
@@ -743,6 +744,7 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
             RCTResponseSenderBlock callback = [writeCallbacks objectForKey:key];
             callback(@[errorStr]);
             [writeCallbacks removeObjectForKey:key];
+            break;
         }
     }
 
@@ -751,6 +753,7 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
             RCTResponseSenderBlock callback = [notificationCallbacks objectForKey:key];
             callback(@[errorStr]);
             [notificationCallbacks removeObjectForKey:key];
+            break;
         }
     }
 
@@ -759,6 +762,7 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
             RCTResponseSenderBlock callback = [stopNotificationCallbacks objectForKey:key];
             callback(@[errorStr]);
             [stopNotificationCallbacks removeObjectForKey:key];
+            break;
         }
     }
 
