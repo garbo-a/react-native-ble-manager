@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.le.ScanResult;
 import android.os.Build;
 import android.support.annotation.Nullable;
 import android.util.Base64;
