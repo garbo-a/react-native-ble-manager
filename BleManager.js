@@ -125,6 +125,18 @@ class BleManager  {
     });
   }
 
+  disconnectOnRetrieveServicesTimeout(peripheralId) {
+    return new Promise((fulfill, reject) => {
+      bleManager.disconnectOnRetrieveServicesTimeout(peripheralId, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          fulfill();
+        }
+      });
+    });
+  }
+
   startNotification(peripheralId, serviceUUID, characteristicUUID) {
     return new Promise((fulfill, reject) => {
       bleManager.startNotification(peripheralId, serviceUUID, characteristicUUID, (error) => {
@@ -222,6 +234,10 @@ class BleManager  {
         }
       });
     });
+  }
+
+  openBluetoothSettings() {
+    bleManager.openBluetoothSettings();
   }
 
   getConnectedPeripherals(serviceUUIDs) {

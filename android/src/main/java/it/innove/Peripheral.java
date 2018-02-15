@@ -34,6 +34,7 @@ public class Peripheral extends BluetoothGattCallback {
 
 	private static final String CHARACTERISTIC_NOTIFICATION_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
 	public static final String LOG_TAG = "logs";
+    private static final int MAX_RECONNECTION_ATTEMPTS = 5;
 
 	private BluetoothDevice device;
 	private byte[] advertisingData;
@@ -50,8 +51,22 @@ public class Peripheral extends BluetoothGattCallback {
 	private Callback writeCallback;
 	private Callback registerNotifyCallback;
 	private Callback requestMTUCallback;
+	private ScanResult result;
 
 	private List<byte[]> writeQueue = new ArrayList<>();
+    private Activity activity;
+        private int reconnectionAttempt;
+        private int reconnectionAttemptOnRetrieveServicesTimeout;
+
+
+    	public Peripheral(BluetoothDevice device, int advertisingRSSI, byte[] scanRecord, ReactContext reactContext, ScanResult result) {
+    		this.device = device;
+    		this.advertisingRSSI = advertisingRSSI;
+    		this.advertisingData = scanRecord;
+    		this.reactContext = reactContext;
+    		this.result = result;
+    	}
+
 
 	public Peripheral(BluetoothDevice device, int advertisingRSSI, byte[] scanRecord, ReactContext reactContext) {
 
@@ -73,6 +88,14 @@ public class Peripheral extends BluetoothGattCallback {
 				.emit(eventName, params);
 	}
 
+    private void sendConnectionEvent(BluetoothDevice device, String eventName, int attempt) {
+    		WritableMap map = Arguments.createMap();
+    		map.putString("peripheral", device.getAddress());
+    		map.putString("attempt", String.valueOf(attempt));
+    		sendEvent(eventName, map);
+    		Log.d(LOG_TAG, "Peripheral event ("+ eventName +"):" + device.getAddress());
+    	}
+
 	private void sendConnectionEvent(BluetoothDevice device, String eventName) {
 		WritableMap map = Arguments.createMap();
 		map.putString("peripheral", device.getAddress());
@@ -81,6 +104,7 @@ public class Peripheral extends BluetoothGattCallback {
 	}
 
 	public void connect(Callback callback, Activity activity) {
+	    this.activity = activity;
 		if (!connected) {
 			BluetoothDevice device = getDevice();
 			this.connectCallback = callback;
@@ -110,6 +134,35 @@ public class Peripheral extends BluetoothGattCallback {
 		} else
 			Log.d(LOG_TAG, "GATT is null");
 	}
+
+    public void disconnectOnRetrieveServicesTimeout() {
+    		connectCallback = null;
+    		connected = false;
+    		if (gatt != null) {
+    			try {
+    				if (this.reconnectionAttemptOnRetrieveServicesTimeout < 3) {
+    					this.reconnectionAttemptOnRetrieveServicesTimeout++;
+    					gatt.disconnect();
+    					gatt.close();
+    					gatt = null;
+    					Log.d(LOG_TAG, "Disconnect device on retrieve services timeout");
+    					sendConnectionEvent(device,
+    							"BleManagerDisconnectPeripheralOnRetrieveServicesTimeout",
+    							this.reconnectionAttemptOnRetrieveServicesTimeout);
+    				} else {
+    					gatt.disconnect();
+    					gatt.close();
+    					gatt = null;
+    					Log.d(LOG_TAG, "Disconnect");
+    					sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
+    				}
+    			} catch (Exception e) {
+    				sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
+    				Log.d(LOG_TAG, "Error on disconnect", e);
+    			}
+    		}else
+    			Log.d(LOG_TAG, "GATT is null");
+    	}
 
 	public WritableMap asWritableMap() {
 
@@ -244,7 +297,16 @@ public class Peripheral extends BluetoothGattCallback {
 			}
 
 		} else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+            if (gatt != null && status == 133 && this.activity != null) {
+                if (this.reconnectionAttempt < MAX_RECONNECTION_ATTEMPTS) {
+                    this.reconnectionAttempt++;
+                    sendConnectionEvent(device, "BleManagerReConnectPeripheralAttempt", this.reconnectionAttempt);
 
+                    gatt.close();
+                    connect(connectCallback, this.activity);
+                    return;
+                }
+            }
 			if (connected) {
 				connected = false;
 
@@ -306,6 +368,7 @@ public class Peripheral extends BluetoothGattCallback {
 	@Override
 	public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
 		super.onCharacteristicRead(gatt, characteristic, status);
+		gatt.setCharacteristicNotification(characteristic, true); // TODO check need
 		Log.d(LOG_TAG, "onCharacteristicRead " + characteristic);
 
 		if (readCallback != null) {
@@ -498,6 +561,10 @@ public class Peripheral extends BluetoothGattCallback {
 		}
 
 		BluetoothGattService service = gatt.getService(serviceUUID);
+		if (service == null) {
+			callback.invoke("Service with  UIID: " + serviceUUID + " not found.", null);
+			return;
+		}
 		BluetoothGattCharacteristic characteristic = findReadableCharacteristic(service, characteristicUUID);
 
 		if (characteristic == null) {

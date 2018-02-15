@@ -10,10 +10,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Bundle;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
+import android.util.Base64;
 import android.util.Log;
 import com.facebook.react.bridge.*;
 import com.facebook.react.modules.core.RCTNativeAppEventEmitter;
+import org.json.JSONException;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -242,6 +246,18 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		Peripheral peripheral = peripherals.get(peripheralUUID);
 		if (peripheral != null) {
 			peripheral.disconnect();
+			callback.invoke();
+		} else
+			callback.invoke("Peripheral not found");
+	}
+
+	@ReactMethod
+	public void disconnectOnRetrieveServicesTimeout(String peripheralUUID, Callback callback) {
+		Log.d(LOG_TAG, "Disconnect on retrieve services timeout from: " + peripheralUUID);
+
+		Peripheral peripheral = peripherals.get(peripheralUUID);
+		if (peripheral != null) {
+			peripheral.disconnectOnRetrieveServicesTimeout();
 			callback.invoke();
 		} else
 			callback.invoke("Peripheral not found");
@@ -507,6 +523,17 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		} else
 			callback.invoke("Peripheral not found");
 	}
+
+	@ReactMethod
+        public void openBluetoothSettings() {
+            final Intent i = new Intent();
+            i.setAction(Settings.ACTION_BLUETOOTH_SETTINGS);
+            i.addCategory(Intent.CATEGORY_DEFAULT);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            i.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+            i.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+            this.reactContext.startActivity(i);
+        }
 
 	@ReactMethod
 	public void requestMTU(String deviceUUID, int mtu, Callback callback) {
