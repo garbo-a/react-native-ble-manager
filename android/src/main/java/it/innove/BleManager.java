@@ -198,16 +198,8 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 	}
 
 	@ReactMethod
-	private void removeBond(String peripheralUUID, Callback callback) {
+    private void removeBond(String peripheralUUID, Callback callback) {
 		Log.d(LOG_TAG, "Remove bond to: " + peripheralUUID);
-
-		Set<BluetoothDevice> deviceSet = getBluetoothAdapter().getBondedDevices();
-		for (BluetoothDevice device : deviceSet) {
-			if (peripheralUUID.equalsIgnoreCase(device.getAddress())) {
-				callback.invoke();
-				return;
-			}
-		}
 
 		Peripheral peripheral = retrieveOrCreatePeripheral(peripheralUUID);
 		if (peripheral == null) {
@@ -434,7 +426,7 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 
 			} else if (action.equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED)) {
 				final int bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
-				final int prevState    = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
+				final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
 				BluetoothDevice device = (BluetoothDevice) intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
 				String bondStateStr = "UNKNOWN";
@@ -464,8 +456,12 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 					removeBondRequest.callback.invoke();
 					removeBondRequest = null;
 				}
+				if (bondState == BluetoothDevice.BOND_BONDED) {
+					WritableMap map = Arguments.createMap();
+					map.putString("id", device.getAddress());
+					sendEvent("BleManagerBondCreated", map);
+				}
 			}
-
 		}
 	};
 
@@ -524,16 +520,16 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 			callback.invoke("Peripheral not found");
 	}
 
-	@ReactMethod
-        public void openBluetoothSettings() {
-            final Intent i = new Intent();
-            i.setAction(Settings.ACTION_BLUETOOTH_SETTINGS);
-            i.addCategory(Intent.CATEGORY_DEFAULT);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            i.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-            i.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
-            this.reactContext.startActivity(i);
-        }
+    @ReactMethod
+    public void openBluetoothSettings() {
+        final Intent i = new Intent();
+        i.setAction(Settings.ACTION_BLUETOOTH_SETTINGS);
+        i.addCategory(Intent.CATEGORY_DEFAULT);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        i.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+        i.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        this.reactContext.startActivity(i);
+    }
 
 	@ReactMethod
 	public void requestMTU(String deviceUUID, int mtu, Callback callback) {

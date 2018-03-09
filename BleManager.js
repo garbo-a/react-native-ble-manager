@@ -312,11 +312,11 @@ class BleManager  {
 
   requestMTU(peripheralId, mtu) {
     return new Promise((fulfill, reject) => {
-      bleManager.requestMTU(peripheralId, mtu, (error) => {
+      bleManager.requestMTU(peripheralId, mtu, (error, m) => {
         if (error) {
           reject(error);
         } else {
-          fulfill();
+          fulfill(m);
         }
       });
     });

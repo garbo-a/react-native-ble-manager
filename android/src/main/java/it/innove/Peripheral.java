@@ -26,6 +26,7 @@ import org.json.JSONArray;
 
 import java.util.*;
 
+import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 
 /**
@@ -55,18 +56,18 @@ public class Peripheral extends BluetoothGattCallback {
 	private ScanResult result;
 
 	private List<byte[]> writeQueue = new ArrayList<>();
-    private Activity activity;
-        private int reconnectionAttempt;
-        private int reconnectionAttemptOnRetrieveServicesTimeout;
+	private Activity activity;
+    private int reconnectionAttempt;
+    private int reconnectionAttemptOnRetrieveServicesTimeout;
 
 
-    	public Peripheral(BluetoothDevice device, int advertisingRSSI, byte[] scanRecord, ReactContext reactContext, ScanResult result) {
-    		this.device = device;
-    		this.advertisingRSSI = advertisingRSSI;
-    		this.advertisingData = scanRecord;
-    		this.reactContext = reactContext;
-    		this.result = result;
-    	}
+	public Peripheral(BluetoothDevice device, int advertisingRSSI, byte[] scanRecord, ReactContext reactContext, ScanResult result) {
+		this.device = device;
+		this.advertisingRSSI = advertisingRSSI;
+		this.advertisingData = scanRecord;
+		this.reactContext = reactContext;
+		this.result = result;
+	}
 
 
 	public Peripheral(BluetoothDevice device, int advertisingRSSI, byte[] scanRecord, ReactContext reactContext) {
@@ -89,13 +90,13 @@ public class Peripheral extends BluetoothGattCallback {
 				.emit(eventName, params);
 	}
 
-    private void sendConnectionEvent(BluetoothDevice device, String eventName, int attempt) {
-    		WritableMap map = Arguments.createMap();
-    		map.putString("peripheral", device.getAddress());
-    		map.putString("attempt", String.valueOf(attempt));
-    		sendEvent(eventName, map);
-    		Log.d(LOG_TAG, "Peripheral event ("+ eventName +"):" + device.getAddress());
-    	}
+	private void sendConnectionEvent(BluetoothDevice device, String eventName, int attempt) {
+		WritableMap map = Arguments.createMap();
+		map.putString("peripheral", device.getAddress());
+		map.putString("attempt", String.valueOf(attempt));
+		sendEvent(eventName, map);
+		Log.d(LOG_TAG, "Peripheral event ("+ eventName +"):" + device.getAddress());
+	}
 
 	private void sendConnectionEvent(BluetoothDevice device, String eventName) {
 		WritableMap map = Arguments.createMap();
@@ -109,7 +110,11 @@ public class Peripheral extends BluetoothGattCallback {
 		if (!connected) {
 			BluetoothDevice device = getDevice();
 			this.connectCallback = callback;
-			gatt = device.connectGatt(activity, false, this);
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				gatt = device.connectGatt(activity, false, this, TRANSPORT_LE);
+			} else {
+				gatt = device.connectGatt(activity, false, this);
+			}
 		} else {
 			if (gatt != null) {
 				callback.invoke();
@@ -136,34 +141,34 @@ public class Peripheral extends BluetoothGattCallback {
 			Log.d(LOG_TAG, "GATT is null");
 	}
 
-    public void disconnectOnRetrieveServicesTimeout() {
-    		connectCallback = null;
-    		connected = false;
-    		if (gatt != null) {
-    			try {
-    				if (this.reconnectionAttemptOnRetrieveServicesTimeout < 3) {
-    					this.reconnectionAttemptOnRetrieveServicesTimeout++;
-    					gatt.disconnect();
-    					gatt.close();
-    					gatt = null;
-    					Log.d(LOG_TAG, "Disconnect device on retrieve services timeout");
-    					sendConnectionEvent(device,
-    							"BleManagerDisconnectPeripheralOnRetrieveServicesTimeout",
-    							this.reconnectionAttemptOnRetrieveServicesTimeout);
-    				} else {
-    					gatt.disconnect();
-    					gatt.close();
-    					gatt = null;
-    					Log.d(LOG_TAG, "Disconnect");
-    					sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
-    				}
-    			} catch (Exception e) {
-    				sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
-    				Log.d(LOG_TAG, "Error on disconnect", e);
-    			}
-    		}else
-    			Log.d(LOG_TAG, "GATT is null");
-    	}
+	public void disconnectOnRetrieveServicesTimeout() {
+		connectCallback = null;
+		connected = false;
+		if (gatt != null) {
+			try {
+				if (this.reconnectionAttemptOnRetrieveServicesTimeout < 3) {
+					this.reconnectionAttemptOnRetrieveServicesTimeout++;
+					gatt.disconnect();
+					gatt.close();
+					gatt = null;
+					Log.d(LOG_TAG, "Disconnect device on retrieve services timeout");
+					sendConnectionEvent(device,
+							"BleManagerDisconnectPeripheralOnRetrieveServicesTimeout",
+							this.reconnectionAttemptOnRetrieveServicesTimeout);
+				} else {
+					gatt.disconnect();
+					gatt.close();
+					gatt = null;
+					Log.d(LOG_TAG, "Disconnect");
+					sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
+				}
+			} catch (Exception e) {
+				sendConnectionEvent(device, "BleManagerDisconnectPeripheral");
+				Log.d(LOG_TAG, "Error on disconnect", e);
+			}
+		}else
+			Log.d(LOG_TAG, "GATT is null");
+	}
 
 	public WritableMap asWritableMap() {
 
@@ -298,16 +303,16 @@ public class Peripheral extends BluetoothGattCallback {
 			}
 
 		} else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-            if (gatt != null && status == 133 && this.activity != null) {
-                if (this.reconnectionAttempt < MAX_RECONNECTION_ATTEMPTS) {
-                    this.reconnectionAttempt++;
-                    sendConnectionEvent(device, "BleManagerReConnectPeripheralAttempt", this.reconnectionAttempt);
+			if (gatt != null && status == 133 && this.activity != null) {
+				if (this.reconnectionAttempt < MAX_RECONNECTION_ATTEMPTS) {
+					this.reconnectionAttempt++;
+					sendConnectionEvent(device, "BleManagerReConnectPeripheralAttempt", this.reconnectionAttempt);
 
-                    gatt.close();
-                    connect(connectCallback, this.activity);
-                    return;
-                }
-            }
+					gatt.close();
+					connect(connectCallback, this.activity);
+					return;
+				}
+			}
 			if (connected) {
 				connected = false;
 
@@ -369,7 +374,7 @@ public class Peripheral extends BluetoothGattCallback {
 	@Override
 	public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
 		super.onCharacteristicRead(gatt, characteristic, status);
-		gatt.setCharacteristicNotification(characteristic, true); // TODO check need
+		// gatt.setCharacteristicNotification(characteristic, true); TODO check if needed
 		Log.d(LOG_TAG, "onCharacteristicRead " + characteristic);
 
 		if (readCallback != null) {
@@ -760,9 +765,12 @@ public class Peripheral extends BluetoothGattCallback {
 
 		if (Build.VERSION.SDK_INT >= LOLLIPOP) {
 			requestMTUCallback = callback;
-			gatt.requestMtu(mtu);
+			if (gatt != null) {
+				gatt.requestMtu(mtu);
+			}
 		} else {
-			callback.invoke("The requestMTU require at least 21 API level", null);
+		    // fake answer to allow requestMTU work on RN part with SDK < 21
+            callback.invoke(null, true);
 			return;
 		}
 

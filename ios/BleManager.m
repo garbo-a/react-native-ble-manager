@@ -64,7 +64,7 @@ bool hasListeners;
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
     NSString *key = [self keyForPeripheral: peripheral andCharacteristic:characteristic];
     RCTResponseSenderBlock readCallback = [readCallbacks objectForKey:key];
-    
+
     if (error) {
         NSLog(@"Error %@ :%@", characteristic.UUID, error);
         if (readCallback != NULL) {
